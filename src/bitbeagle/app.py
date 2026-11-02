@@ -204,13 +204,14 @@ def main(page: Page):
     brand_text = ft.Row(
         [
             ft.Text(
-                "Bit", size=38, weight=ft.FontWeight.W_500, color=p["text_muted"],
+                "Bit", size=40, weight=ft.FontWeight.W_800, color=p["text_muted"],
                 font_family="ui-monospace, SF Mono, Menlo, Consolas, monospace",
+                style=ft.TextStyle(letter_spacing=1.0),
             ),
             ft.Text(
-                "Beagle", size=38, weight=ft.FontWeight.W_900, color=p["text"],
+                "Beagle", size=40, weight=ft.FontWeight.W_900, color=p["text"],
                 font_family="ui-monospace, SF Mono, Menlo, Consolas, monospace",
-                style=ft.TextStyle(letter_spacing=3.5),
+                style=ft.TextStyle(letter_spacing=2.5),
             ),
         ],
         spacing=0, alignment=ft.MainAxisAlignment.CENTER, tight=True,
@@ -739,13 +740,16 @@ def main(page: Page):
             log("URL copied.", "ok")
         except Exception as ex: log(f"Copy failed: {ex}", "err")
 
-    async def open_url(e=None):
-        try: await ft.UrlLauncher().launch_url(state.access_url)
+    async def open_url(e=None, url: str | None = None):
+        target = url or state.access_url
+        try:
+            await ft.UrlLauncher().launch_url(target)
         except Exception as ex:
             try:
                 import webbrowser
-                webbrowser.open(state.access_url)
-            except Exception: log(f"Open failed: {ex}", "err")
+                webbrowser.open(target)
+            except Exception:
+                log(f"Open failed: {ex}", "err")
 
     async def show_qr(e=None):
         try: from .core.qr import make_qr_data_uri
@@ -853,6 +857,8 @@ def main(page: Page):
         "refresh_ip": refresh_ip,
         "copy_url": lambda e=None: run_async(copy_url, e),
         "open_url": lambda e=None: run_async(open_url, e),
+        "open_github": lambda e=None: run_async(open_url, e, "https://github.com/mohammed-mahmoudzadeh/bitbeagle"),
+        "open_issues": lambda e=None: run_async(open_url, e, "https://github.com/mohammed-mahmoudzadeh/bitbeagle/issues"),
         "show_qr": lambda e=None: run_async(show_qr, e),
         "on_iface_change": on_iface_change,
         "set_port": set_port,
@@ -889,9 +895,9 @@ def main(page: Page):
 
         logo_src = _get_logo_src()
         
-        # Responsive sizes for mobile vs desktop
-        logo_size = 52 if is_mobile else 64
-        brand_size = 22 if is_mobile else 24
+        # Responsive sizing based on visual hierarchy
+        logo_size = 52 if is_mobile else 72
+        brand_size = 19 if is_mobile else 24
 
         if logo_src:
             brand_logo: ft.Control = ft.Image(
@@ -907,7 +913,7 @@ def main(page: Page):
             [
                 ft.Row(
                     [
-                        ft.Text("Bit", size=brand_size, weight=ft.FontWeight.W_500, color=p["text_muted"], font_family="ui-monospace, SF Mono, Menlo, Consolas, monospace"),
+                        ft.Text("Bit", size=brand_size, weight=ft.FontWeight.W_800, color=p["text_muted"], font_family="ui-monospace, SF Mono, Menlo, Consolas, monospace"),
                         ft.Text("Beagle", size=brand_size, weight=ft.FontWeight.W_900, color=p["text"], font_family="ui-monospace, SF Mono, Menlo, Consolas, monospace"),
                     ],
                     spacing=0, tight=True
@@ -1113,6 +1119,22 @@ def main(page: Page):
         log("Pick a folder to start.", "info")
 
     run_async(refresh_ip)
+
+    # Deferred device-name detection: `mActivity` isn't ready until the
+    # page is fully mounted, so we re-check here and patch the state.
+    def _try_autodetect_device_name():
+        if state.device_name in ("", "My Phone", "My Device"):
+            try:
+                from .core.network import get_device_name
+                detected = get_device_name()
+                if detected and detected != "My Device":
+                    state.device_name = detected
+                    persist_settings()
+                    render()
+            except Exception as ex:
+                log(f"Device name detection failed: {ex}", "warn")
+
+    run_async(_try_autodetect_device_name)
 
     page.add(root_holder)
     render()

@@ -29,7 +29,8 @@ def load_settings(state: AppState) -> None:
     try:
         data: Any = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return
+        data = {}
+
     if not isinstance(data, dict):
         raise ValueError("Settings file must contain a JSON object.")
 
@@ -61,6 +62,15 @@ def load_settings(state: AppState) -> None:
     state.iface_ip = settings.get("iface_ip", state.iface_ip)
     state.device_name = settings.get("device_name", state.device_name)
     state.iface_picked = iface_picked
+
+    # Auto-detect a friendly device name on first launch, or if the
+    # saved value is still the placeholder.
+    if not state.device_name or state.device_name == "My Phone":
+        try:
+            from .core.network import get_device_name
+            state.device_name = get_device_name()
+        except Exception:
+            pass
 
 
 def save_settings(state: AppState) -> None:

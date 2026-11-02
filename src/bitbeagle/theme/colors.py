@@ -15,9 +15,9 @@ def build_palette(dark: bool) -> dict:
             "surface_3":      "#1f1f1f",
             "surface_hover":  "#1a1a1a",
             # Borders
-            "border":         "#1f1f1f",
+            "border":         "#262626",
             "border_soft":    "#141414",
-            "border_strong":  "#2e2e2e",
+            "border_strong":  "#3f3f3f",
             # Text
             "text":           "#fafafa",
             "text_dim":       "#d4d4d8",
@@ -72,6 +72,7 @@ def build_palette(dark: bool) -> dict:
         "status_offline": "#a1a1aa",
         "shadow":         "#000000",
     }
+
 
 def card_shadow(dark: bool):
     return None

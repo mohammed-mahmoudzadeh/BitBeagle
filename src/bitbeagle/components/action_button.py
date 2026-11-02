@@ -88,15 +88,16 @@ def ActionButton(
     def _handle_click(e):
         if is_loading["value"] or disabled:
             return
-        if on_click is None:
+        cb = on_click
+        if cb is None:
             return
 
         _set_loading(True)
 
-        if asyncio.iscoroutinefunction(on_click):
+        if asyncio.iscoroutinefunction(cb):
             async def _run_async():
                 try:
-                    await on_click(e)
+                    await cb(e)
                 finally:
                     _set_loading(False)
             try:
@@ -105,7 +106,7 @@ def ActionButton(
                 _set_loading(False)
         else:
             try:
-                on_click(e)
+                cb(e)
             finally:
                 _set_loading(False)
 

@@ -158,3 +158,86 @@ def get_primary_ip() -> str:
         if ip not in ("0.0.0.0", "127.0.0.1"):
             return ip
     return "127.0.0.1"
+
+def get_device_name() -> str:
+    """Return a human-readable name for this device.
+
+    - Android 8+: read Settings.Global.DEVICE_NAME (the user-set name).
+    - Android fallback: BluetoothAdapter name, then Build.MODEL.
+    - Desktop: the logged-in username (nicely capitalized).
+    - Fallback: the network hostname, then "My Device".
+    """
+    if IS_ANDROID:
+        try:
+            from jnius import autoclass  # type: ignore
+
+            # Try multiple ways to obtain the Android context.
+            context = None
+            try:
+                from android import mActivity  # type: ignore
+                if mActivity is not None:
+                    context = mActivity.getApplicationContext()
+            except Exception:
+                pass
+
+            if context is None:
+                try:
+                    activity_host = os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
+                    if activity_host:
+                        host = autoclass(activity_host)
+                        if host.mActivity is not None:
+                            context = host.mActivity.getApplicationContext()
+                except Exception:
+                    pass
+
+            # 1. Try Settings.Global.DEVICE_NAME (Android 8+)
+            if context is not None:
+                try:
+                    Settings = autoclass("android.provider.Settings$Global")
+                    resolver = context.getContentResolver()
+                    name = Settings.getString(resolver, "device_name")
+                    if name:
+                        return str(name)
+                except Exception:
+                    pass
+
+            # 2. Try BluetoothAdapter name
+            try:
+                BluetoothAdapter = autoclass("android.bluetooth.BluetoothAdapter")
+                adapter = BluetoothAdapter.getDefaultAdapter()
+                if adapter is not None:
+                    name = adapter.getName()
+                    if name:
+                        return str(name)
+            except Exception:
+                pass
+
+            # 3. Fallback to Build.MODEL
+            try:
+                Build = autoclass("android.os.Build")
+                model = Build.MODEL
+                if model:
+                    return str(model)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    else:
+        # --- Desktop ---
+        try:
+            import getpass
+            user = getpass.getuser()
+            if user:
+                return user[0].upper() + user[1:]
+        except Exception:
+            pass
+
+        try:
+            host = socket.gethostname()
+            if host:
+                return host
+        except Exception:
+            pass
+
+    return "My Device"

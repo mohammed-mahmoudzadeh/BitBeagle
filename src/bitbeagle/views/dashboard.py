@@ -207,7 +207,7 @@ def build_dashboard(P, state, handlers, page_width=1200):
     # ============================================================
     # Hero — access URL
     # ============================================================
-    link_icon_size = 30 if is_narrow else 28
+    link_icon_size = 30 if is_narrow else 34
     url_text_size = 17 if is_narrow else 20
     url_gap = Space.md
 
@@ -268,30 +268,22 @@ def build_dashboard(P, state, handlers, page_width=1200):
     # ============================================================
     # Server card
     # ============================================================
-    port_field = TextInput(P, hint="8000", value=state.port,
-                           on_change=lambda e: handlers["set_port"](e.control.value))
+    port_field = TextInput(
+        P, hint="8000", value=state.port,
+        on_change=lambda e: handlers["set_port"](e.control.value),
+    )
     if state.server_running:
         port_field.read_only = True
-        port_field.bgcolor = P["surface_2"]
-        port_field.color = P["text_muted"]
+        port_field.opacity = 0.9
 
     iface_options = [
         ft.dropdown.Option(key=str(i), text=f"{label} · {ip}")
         for i, (label, ip) in enumerate(state.interfaces)
     ] or [ft.dropdown.Option(key="0", text="All Interfaces · 0.0.0.0")]
 
-    # Modern border API — `OutlineInputBorder` accepts `border_radius`
-    # and `side`. `OutlinedBorder` does NOT.
-    iface_dropdown = ft.Dropdown(
-        key=str(state.iface_index),
-        value=str(state.iface_index),
-        options=iface_options,
-        on_select=lambda e: handlers["on_iface_change"](int(e.control.value or "0")),
+    iface_common = dict(
         height=46,
-        bgcolor=P["surface_2"],
-        color=P["text"],
-        text_style=ft.TextStyle(color=P["text"], size=15),
-        content_padding=ft.Padding.symmetric(horizontal=Space.md, vertical=0),
+        bgcolor=P["bg"],
         border={
             ft.ControlState.DEFAULT: ft.OutlineInputBorder(
                 border_radius=Radius.lg,
@@ -302,22 +294,74 @@ def build_dashboard(P, state, handlers, page_width=1200):
                 side=ft.BorderSide(1, P["primary"]),
             ),
         },
-        disabled=state.server_running,
     )
+
     if state.server_running:
-        iface_dropdown.bgcolor = P["surface_2"]
-        iface_dropdown.color = P["text_muted"]
-        iface_dropdown.text_style = ft.TextStyle(color=P["text_muted"], size=15)
+        # Static look-alike with rounded corners matching the active dropdown.
+        current_label = "All Interfaces · 0.0.0.0"
+        if 0 <= state.iface_index < len(state.interfaces):
+            label, ip = state.interfaces[state.iface_index]
+            current_label = f"{label} · {ip}"
+        iface_control: ft.Control = ft.Container(
+            content=ft.Text(
+                current_label,
+                color=P["text"],
+                size=15,
+                max_lines=1,
+                overflow=ft.TextOverflow.ELLIPSIS,
+            ),
+            height=46,
+            bgcolor=P["bg"],
+            border=ft.Border.all(1, P["border"]),
+            border_radius=Radius.lg,
+            padding=ft.Padding.symmetric(horizontal=Space.md, vertical=0),
+            alignment=ft.Alignment.CENTER_LEFT,
+            opacity=0.9,
+        )
+    else:
+        iface_control = ft.Dropdown(
+            key=str(state.iface_index),
+            value=str(state.iface_index),
+            options=iface_options,
+            on_select=lambda e: handlers["on_iface_change"](int(e.control.value or "0")),
+            **iface_common,
+            content_padding=ft.Padding.symmetric(horizontal=Space.md, vertical=0),
+            color=P["text"],
+            text_style=ft.TextStyle(color=P["text"], size=15),
+        )
+
+    # Port and Interface side-by-side on wide screens, stacked on mobile.
+    # Fixed width for Port keeps 5–6 digits visible on desktop.
+    if is_narrow:
+        port_iface_block = ft.Column(
+            [
+                LabeledField(P, "Port", port_field),
+                ft.Container(height=Space.md),
+                LabeledField(P, "Interface", iface_control),
+            ],
+            spacing=0,
+            tight=True,
+        )
+    else:
+        port_iface_block = ft.Row(
+            [
+                ft.Container(
+                    content=LabeledField(P, "Port", port_field),
+                    width=140,  # Enough for 5-6 digits
+                ),
+                ft.Container(width=Space.md),
+                ft.Container(
+                    content=LabeledField(P, "Interface", iface_control),
+                    expand=True,
+                ),
+            ],
+            spacing=0,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+        )
 
     server_content = ft.Column(
         [
-            ft.ResponsiveRow(
-                [
-                    ft.Container(content=LabeledField(P, "Port", port_field), col={"xs": 12, "sm": 6, "md": 4, "lg": 3}),
-                    ft.Container(content=LabeledField(P, "Interface", iface_dropdown), col={"xs": 12, "sm": 6, "md": 8, "lg": 9}),
-                ],
-                spacing=Space.md, run_spacing=Space.md,
-            ),
+            port_iface_block,
             vspace(Space.lg),
             ft.Row(
                 [
@@ -418,11 +462,9 @@ def build_dashboard(P, state, handlers, page_width=1200):
         )
     else:
         placeholder_icon = ft.Container(
-            content=ft.Icon(ft.Icons.ADD_ROUNDED, size=26, color=P["text_muted"]),
-            width=52, height=52,
-            border_radius=Radius.md,
-            bgcolor=P["surface_2"],
-            border=ft.Border.all(1, P["border"]),
+            content=ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, size=24, color=P["text_muted"]),
+            width=44, height=44, border_radius=Radius.md,
+            bgcolor=P["surface_2"], border=ft.Border.all(1, P["border"]),
             alignment=ft.Alignment.CENTER,
         )
 

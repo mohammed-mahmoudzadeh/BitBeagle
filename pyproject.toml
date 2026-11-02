@@ -102,3 +102,4 @@ reportArgumentType = false
 reportReturnType = false
 reportUnusedCoroutine = false
 reportUnusedExpression = false
+reportCallIssue = false
